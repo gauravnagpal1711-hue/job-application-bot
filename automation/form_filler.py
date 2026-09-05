@@ -1,14 +1,13 @@
 """
-Generic application-form auto-filler (Playwright).
+Generic application-form auto-filler (Playwright) for Naukri.
 
-Job application forms vary enormously between "Easy Apply" (LinkedIn),
-Naukri's one-click apply, and third-party ATS pages (Greenhouse, Lever,
-Workday, etc.). This module handles the common cases (LinkedIn Easy Apply,
-Naukri one-click) and does a best-effort generic fill for anything else by
-matching visible <label> text against the profile dict's keys. Any field
-it cannot confidently match is reported back so the row gets flagged
-"Missing Info Required" in the tracker instead of being submitted with
-guessed/blank data.
+Naukri's one-click apply and third-party ATS pages (Greenhouse, Lever,
+Workday, etc.) vary in how their forms are structured. This module handles
+the common case (Naukri one-click) and does a best-effort generic fill for
+anything else by matching visible <label> text against the profile dict's
+keys. Any field it cannot confidently match is reported back so the row
+gets flagged "Missing Info Required" in the tracker instead of being
+submitted with guessed/blank data.
 """
 from __future__ import annotations
 
@@ -24,36 +23,6 @@ class ApplyResult:
         self.success = success
         self.notes = notes
         self.missing = missing or []
-
-
-def apply_linkedin_easy_apply(page: Page, profile: dict) -> ApplyResult:
-    try:
-        easy_apply_btn = page.query_selector("button.jobs-apply-button")
-        if not easy_apply_btn:
-            return ApplyResult(False, notes="No Easy Apply button found — likely an external application link")
-
-        easy_apply_btn.click()
-        page.wait_for_timeout(1500)
-
-        missing = _fill_visible_form_fields(page, profile)
-
-        if missing:
-            return ApplyResult(False, notes="Form has fields not covered by profile", missing=missing)
-
-        submit_btn = page.query_selector("button[aria-label='Submit application']")
-        if submit_btn:
-            submit_btn.click()
-            page.wait_for_timeout(1500)
-            return ApplyResult(True, notes="Submitted via LinkedIn Easy Apply")
-
-        next_btn = page.query_selector("button[aria-label='Continue to next step']")
-        if next_btn:
-            return ApplyResult(False, notes="Multi-step Easy Apply form — extend form_filler.py to page through steps")
-
-        return ApplyResult(False, notes="Could not find a submit control")
-    except Exception as exc:  # noqa: BLE001
-        logger.exception("LinkedIn Easy Apply failed")
-        return ApplyResult(False, notes=f"Error: {exc}")
 
 
 def apply_naukri_one_click(page: Page, profile: dict) -> ApplyResult:
