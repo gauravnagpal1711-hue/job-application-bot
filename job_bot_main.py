@@ -24,6 +24,7 @@ from integrations.google_sheets import SheetsClient
 from scrapers.linkedin_scraper import scrape_linkedin_jobs
 from scrapers.naukri_scraper import scrape_naukri_jobs
 from utils.config import Config
+from utils.cookies import parse_cookie_string
 from utils.logger import get_logger
 
 logger = get_logger("job_bot_main")
@@ -67,7 +68,22 @@ def run_apply_loop_once():
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=Config.HEADLESS)
-        page = browser.new_page()
+        context = browser.new_context()
+
+        # Load whatever logged-in sessions are available so Easy Apply /
+        # one-click apply run as the actual candidate account instead of
+        # hitting a login wall. Each is just a cookie string the user
+        # captured from their own browser — never a password.
+        if Config.LI_AT_COOKIE:
+            context.add_cookies(
+                parse_cookie_string(f"li_at={Config.LI_AT_COOKIE}", ".linkedin.com")
+            )
+        if Config.NAUKRI_COOKIES:
+            context.add_cookies(
+                parse_cookie_string(Config.NAUKRI_COOKIES, ".naukri.com")
+            )
+
+        page = context.new_page()
 
         for row_number, record in to_apply:
             app_link = record.get("Application Link") or record.get("Source Link")
