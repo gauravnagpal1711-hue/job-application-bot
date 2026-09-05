@@ -47,32 +47,45 @@ through any third party, including in chat:
 |---|---|
 | `GOOGLE_SHEET_ID` | the ID from your sheet's URL (the long string between `/d/` and `/edit`) |
 | `GOOGLE_CREDENTIALS_JSON` | paste the **entire contents** of the downloaded service-account JSON file |
-| `LINKEDIN_EMAIL` | your LinkedIn login email |
-| `LINKEDIN_PASSWORD` | see the LinkedIn note below — an app password does **not** apply to LinkedIn logins |
+| `NAUKRI_COOKIES` | your Naukri session cookies — see the note below (needed for one-click apply; search/scrape works without it) |
 | `LOG_LEVEL` | `INFO` |
 | `JOB_KEYWORDS` | comma-separated, e.g. `HR Manager,Talent Acquisition,HRBP` |
 | `JOB_LOCATIONS` | comma-separated, e.g. `Delhi NCR,Remote` |
 
-### A note on LinkedIn credentials
+### Why a cookie instead of your password
 
-LinkedIn doesn't support "app passwords" the way Google/Gmail does — that
-mechanism is specific to Google accounts with 2-Step Verification. For
-LinkedIn you'd set your actual account password as `LINKEDIN_PASSWORD`,
-which is exactly the kind of automated login LinkedIn's bot-detection is
-built to catch (expect a CAPTCHA/"verify it's you" challenge most of the
-time). The more reliable path:
+Naukri's own login flow is built to catch automated password logins, so
+this bot never types your password into the site. It authenticates the
+same way a "remember me" session does: with a cookie copied from a browser
+where **you** logged in normally. That means:
 
-1. Log into LinkedIn manually in a normal browser.
-2. Open DevTools → Application → Cookies → linkedin.com → copy the value
-   of the `li_at` cookie.
-3. Set it as a Railway variable named `LI_AT_COOKIE` instead of relying on
-   password login. `scrapers/linkedin_scraper.py` will use it automatically.
-4. This cookie expires periodically (LinkedIn rotates it) — you'll need to
-   refresh it every so often when the bot's logs show login failures.
+- Your actual password is never stored anywhere in this project, in
+  Railway, or in any conversation — including with an AI assistant. Only
+  type your Naukri password into naukri.com's own login page, nowhere else.
+- A leaked cookie is a much smaller risk than a leaked password — you can
+  invalidate it any time by simply logging out (or changing your
+  password), and it can't be used to change your account's password or
+  security settings the way a real password could.
+- The tradeoff: cookies expire periodically, so if the bot's logs start
+  showing login failures, just repeat the steps below to grab a fresh one.
 
-Either way, only you should type your LinkedIn password/cookie into
-Railway's own Variables screen — never share it in chat with anyone,
-including an AI assistant.
+### Getting your Naukri cookie (`NAUKRI_COOKIES`)
+
+1. Log into Naukri manually (as the candidate account you want the bot to
+   apply as) in a normal browser.
+2. Open DevTools → Application → Storage → Cookies → `naukri.com`.
+3. Copy every row as one string in `name=value; name2=value2` format (in
+   Chrome you can select all rows in the cookie table, copy, and paste —
+   or copy them one at a time and join with `; `). Include at least the
+   session/auth-looking cookies (names vary and change over time, so when
+   in doubt include all of them).
+4. Set that whole string as a Railway variable named `NAUKRI_COOKIES`.
+   `job_bot_main.py` loads it into the browser before every apply run.
+
+Only you should ever open DevTools on your own logged-in session and paste
+the resulting cookie value into Railway's own Variables screen — never
+share your password, or the cookie value, in chat with anyone, including
+an AI assistant.
 
 ## 5. First run
 
@@ -85,8 +98,9 @@ After variables are set, Railway redeploys automatically. Check
 🔄 Starting continuous monitoring for 'Order to Apply' entries...
 ```
 
-If LinkedIn login fails, you'll see a warning in the logs and the bot will
-still run Naukri scraping normally.
+If `NAUKRI_COOKIES` is missing or expired, one-click apply will hit a
+login wall — you'll see it noted in the logs and in each row's `Bot
+Notes`, while search/scrape keeps working normally.
 
 ## 6. Daily usage
 
