@@ -3,8 +3,8 @@ Job Application Bot — entry point.
 
 Two jobs run on a schedule:
   1. Daily scrape (default 11:00 IST): pull jobs posted in the last 24h
-     from LinkedIn + Naukri, skip ones already in the tracker, append the
-     rest to Sheet2 with Status = "Pending Review".
+     from Naukri, skip ones already in the tracker, append the rest to
+     Sheet2 with Status = "Pending Review".
   2. Continuous apply loop (default every 5 minutes): scan Sheet2 for rows
      where "Order to Apply" = YES and Status != Applied, attempt to apply
      using the profile data in Sheet1, and update Status / Bot Notes /
@@ -13,15 +13,13 @@ Two jobs run on a schedule:
 from __future__ import annotations
 
 import sys
-import time
 
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.cron import CronTrigger
 from playwright.sync_api import sync_playwright
 
-from automation.form_filler import apply_linkedin_easy_apply, apply_naukri_one_click
+from automation.form_filler import apply_naukri_one_click
 from integrations.google_sheets import SheetsClient
-from scrapers.linkedin_scraper import scrape_linkedin_jobs
 from scrapers.naukri_scraper import scrape_naukri_jobs
 from utils.config import Config
 from utils.cookies import parse_cookie_string
@@ -42,11 +40,6 @@ def run_daily_scrape():
         all_jobs.extend(scrape_naukri_jobs())
     except Exception:
         logger.exception("Naukri scrape failed")
-
-    try:
-        all_jobs.extend(scrape_linkedin_jobs())
-    except Exception:
-        logger.exception("LinkedIn scrape failed")
 
     new_jobs = [j for j in all_jobs if j.get("source_link") not in existing_links]
     logger.info(f"Found {len(all_jobs)} total, {len(new_jobs)} new after de-duping")
@@ -70,14 +63,10 @@ def run_apply_loop_once():
         browser = p.chromium.launch(headless=Config.HEADLESS)
         context = browser.new_context()
 
-        # Load whatever logged-in sessions are available so Easy Apply /
-        # one-click apply run as the actual candidate account instead of
-        # hitting a login wall. Each is just a cookie string the user
-        # captured from their own browser — never a password.
-        if Config.LI_AT_COOKIE:
-            context.add_cookies(
-                parse_cookie_string(f"li_at={Config.LI_AT_COOKIE}", ".linkedin.com")
-            )
+        # Load the logged-in Naukri session so one-click apply runs as the
+        # actual candidate account instead of hitting a login wall. This is
+        # just a cookie string the user captured from their own browser —
+        # never a password.
         if Config.NAUKRI_COOKIES:
             context.add_cookies(
                 parse_cookie_string(Config.NAUKRI_COOKIES, ".naukri.com")
@@ -97,9 +86,7 @@ def run_apply_loop_once():
                 sheets.update_status(row_number, "Failed", notes=f"Could not open link: {exc}")
                 continue
 
-            if "linkedin.com" in app_link:
-                result = apply_linkedin_easy_apply(page, profile)
-            elif "naukri.com" in app_link:
+            if "naukri.com" in app_link:
                 result = apply_naukri_one_click(page, profile)
             else:
                 result = None
