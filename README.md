@@ -1,10 +1,10 @@
 # Job Application Bot
 
-Scrapes HR/recruitment job postings from LinkedIn and Naukri, logs them to a
-Google Sheet, and auto-applies to whichever rows you mark `YES` in the
-"Order to Apply" column. Runs on Railway as a long-lived worker (daily
-scrape + a continuous apply loop), no server or UI required — the Google
-Sheet is the control panel.
+Scrapes HR/recruitment job postings from Naukri, logs them to a Google
+Sheet, and auto-applies to whichever rows you mark `YES` in the "Order to
+Apply" column. Runs on Railway as a long-lived worker (daily scrape + a
+continuous apply loop), no server or UI required — the Google Sheet is the
+control panel.
 
 ## How it works
 
@@ -26,11 +26,11 @@ Sheet is the control panel.
 ```
 job_bot_main.py          entry point: scheduler wiring
 utils/config.py           env-var based config + validation
+utils/cookies.py          parses a browser cookie string for Playwright
 utils/logger.py           stdout logging
 integrations/google_sheets.py   Sheet1/Sheet2 read+write wrapper
 scrapers/naukri_scraper.py      Naukri search scraper (Playwright)
-scrapers/linkedin_scraper.py    LinkedIn search scraper (Playwright)
-automation/form_filler.py       LinkedIn Easy Apply / Naukri one-click filler
+automation/form_filler.py       Naukri one-click apply filler
 ```
 
 ## Setup
@@ -40,20 +40,17 @@ Railway environment variables, first run).
 
 ## Known limitations — read before relying on this
 
-- **LinkedIn actively blocks automation.** A password login can trigger a
-  CAPTCHA/verification challenge that a headless bot cannot pass. If that
-  happens, the bot logs a warning and skips LinkedIn rather than failing
-  silently — see SETUP_GUIDE.md for the cookie-based workaround. Running
-  this against your own LinkedIn account carries a real risk of a
-  temporary restriction; that trade-off is yours to make.
-- **CSS selectors will drift.** Both scrapers depend on LinkedIn's and
-  Naukri's current page markup. When either site updates its front-end,
-  the scraper will return zero results until the selectors in
-  `scrapers/*.py` are updated to match the new markup.
+- **CSS selectors will drift.** The scraper depends on Naukri's current
+  page markup. When Naukri updates its front-end, the scraper will return
+  zero results until the selectors in `scrapers/naukri_scraper.py` are
+  updated to match the new markup.
 - **Form filling is best-effort**, matching visible field labels against
-  your Sheet1 profile keys by name. Multi-step LinkedIn Easy Apply flows
-  and third-party ATS pages (Greenhouse, Lever, Workday, etc.) are only
-  partially handled — see the `TODO`-style notes in `form_filler.py`.
+  your Sheet1 profile keys by name. Third-party ATS pages (Greenhouse,
+  Lever, Workday, etc.) reached via a Naukri listing are only partially
+  handled — see the notes in `form_filler.py`.
+- **One-click apply needs a logged-in Naukri session** (`NAUKRI_COOKIES`
+  in Railway) — without it, applies will likely hit a login wall while
+  search/scrape keeps working fine.
 - This is a first working version, not a battle-tested product — plan on
   watching the Railway logs and Sheet2's `Bot Notes` column closely for
   the first week and tightening selectors/logic as you see real jobs flow
