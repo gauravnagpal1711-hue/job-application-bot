@@ -21,16 +21,7 @@ class Config:
     SHEET_PROFILE_TAB = os.environ.get("SHEET_PROFILE_TAB", "Sheet1")
     SHEET_TRACKER_TAB = os.environ.get("SHEET_TRACKER_TAB", "Sheet2")
 
-    # --- LinkedIn ---
-    LINKEDIN_EMAIL = os.environ.get("LINKEDIN_EMAIL", "")
-    LINKEDIN_PASSWORD = os.environ.get("LINKEDIN_PASSWORD", "")
-    # Preferred over email/password — a copy of the `li_at` cookie value from
-    # an already-logged-in browser session. See SETUP_GUIDE.md.
-    LI_AT_COOKIE = os.environ.get("LI_AT_COOKIE", "")
-
-    # --- Naukri (optional separate login) ---
-    NAUKRI_EMAIL = os.environ.get("NAUKRI_EMAIL", LINKEDIN_EMAIL)
-    NAUKRI_PASSWORD = os.environ.get("NAUKRI_PASSWORD", "")
+    # --- Naukri ---
     # Raw "name=value; name2=value2" cookie string copied from a logged-in
     # Naukri session (DevTools → Application → Cookies → naukri.com). This
     # is what lets the apply-loop act as your logged-in candidate account
@@ -76,11 +67,6 @@ class Config:
                 cls.google_credentials_dict()
             except Exception as exc:  # noqa: BLE001
                 problems.append(f"GOOGLE_CREDENTIALS_JSON is not valid JSON: {exc}")
-        if not cls.LI_AT_COOKIE and not (cls.LINKEDIN_EMAIL and cls.LINKEDIN_PASSWORD):
-            problems.append(
-                "Neither LI_AT_COOKIE nor LINKEDIN_EMAIL/LINKEDIN_PASSWORD is set — "
-                "LinkedIn scraping and auto-apply will be skipped"
-            )
         if not cls.NAUKRI_COOKIES:
             problems.append(
                 "NAUKRI_COOKIES not set — Naukri one-click apply will likely hit a "
