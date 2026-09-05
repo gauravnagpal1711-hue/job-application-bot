@@ -17,7 +17,6 @@ Update the selectors below if LinkedIn's markup changes.
 """
 from __future__ import annotations
 
-import os
 import urllib.parse
 
 from playwright.sync_api import sync_playwright
@@ -40,7 +39,7 @@ LOCATION_SELECTOR = "li.job-card-container__metadata-item"
 
 # Optional: a valid li_at session cookie value, captured from a manual
 # browser login, as a fallback when password login gets challenged.
-LI_AT_COOKIE = os.environ.get("LI_AT_COOKIE", "")
+LI_AT_COOKIE = Config.LI_AT_COOKIE
 
 
 def _login_with_password(page) -> bool:
